@@ -970,7 +970,7 @@
   function resizeApp() {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const scale = Math.max(vw / DESIGN_W, vh / DESIGN_H);
+    const scale = Math.min(vw / DESIGN_W, vh / DESIGN_H);
     app.style.width = DESIGN_W + 'px';
     app.style.height = DESIGN_H + 'px';
     app.style.transform = 'translate(-50%, -50%) scale(' + scale + ')';
@@ -992,7 +992,7 @@
   let isTyping = false;
   let dialogStep = 1;
   function getAppScale() {
-    return Math.max(window.innerWidth / DESIGN_W, window.innerHeight / DESIGN_H);
+    return Math.min(window.innerWidth / DESIGN_W, window.innerHeight / DESIGN_H);
   }
 
   // ===== 阻止手机端默认触摸行为（防止背景移动） =====
@@ -1707,10 +1707,10 @@
 
   // ===== 页面12：卡片轮播 =====
   const cardData = [
-    { face: '"10音乐生.jpg',     label: '"12音乐生.png',     labelW: 288, labelH: 149 },
-    { face: '"10乐队主唱.jpg',   label: '"12乐队主唱.png',   labelW: 289, labelH: 148 },
-    { face: '"10自媒体博主.jpg', label: '"12自媒体.png',     labelW: 289, labelH: 147 },
-    { face: '"10志愿服务.jpg',   label: '"12志愿者.png',     labelW: 302, labelH: 147 }
+    { face: '10音乐生.jpg',     label: '12音乐生.png',     labelW: 288, labelH: 149 },
+    { face: '10乐队主唱.jpg',   label: '12乐队主唱.png',   labelW: 289, labelH: 148 },
+    { face: '10自媒体博主.jpg', label: '12自媒体.png',     labelW: 289, labelH: 147 },
+    { face: '10志愿服务.jpg',   label: '12志愿者.png',     labelW: 302, labelH: 147 }
   ];
 
   let currentCardIdx = 0;
