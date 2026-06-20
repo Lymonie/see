@@ -3,17 +3,23 @@
 <head>
 <base href="/see/">
 <meta charset="UTF-8">
-<meta name="viewport" content="width=750, user-scalable=no, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>见未见的世界</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
-
   /* ===== 视口自适应缩放 ===== */
+  html, body {
+    width: 100%; height: 100%;
+    background: #000; overflow: hidden;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
   #app {
     width: 750px; height: 1440px;
-    position: absolute; top: 0; left: 0;
-    transform-origin: top left;
+    position: absolute; top: 50%; left: 50%;
+    transform-origin: center center;
     overflow: hidden; background: #000;
   }
 
@@ -35,13 +41,13 @@
   /* ===== 页面通用 ===== */
   .page {
     position: absolute; top: 0; left: 0;
-    width: 750px; height: 1440px;
+    width: 100%; height: 100%;
     display: none; overflow: hidden;
   }
   .page.active { display: block; }
   .page-bg {
     position: absolute; top: 0; left: 0;
-    width: 750px; height: 1440px;
+    width: 100%; height: 100%;
     object-fit: cover;
   }
 
@@ -323,13 +329,13 @@
   #page9 { position: relative; background: #000; }
   .p9-video {
     position: absolute; top: 0; left: 0;
-    width: 750px; height: 1440px;
+    width: 100%; height: 100%;
     object-fit: cover; z-index: 1;
   }
   .p9-video.blurred { filter: blur(8px); transition: filter 0.5s ease; }
   .p9-frame {
     position: absolute; top: 0; left: 0;
-    width: 750px; height: 1440px;
+    width: 100%; height: 100%;
     object-fit: cover; z-index: 2; pointer-events: none;
   }
   .p9-record-btn {
@@ -395,7 +401,7 @@
   #page11 { position: relative; background: #000; }
   .p11-video {
     position: absolute; top: 0; left: 0;
-    width: 750px; height: 1440px;
+    width: 100%; height: 100%;
     object-fit: cover; z-index: 1;
   }
   .p11-success-img {
@@ -690,7 +696,7 @@
   #page15 { position: relative; }
   .p15-video {
     position: absolute; top: 0; left: 0;
-    width: 750px; height: 1440px;
+    width: 100%; height: 100%;
     object-fit: cover; z-index: 1;
   }
 </style>
@@ -849,7 +855,7 @@
 
   <!-- ========== 页面9 ========== -->
   <div id="page9" class="page">
-    <video id="p9Video" class="p9-video" src=""大眠.mp4" playsinline preload="auto" muted></video>
+    <video id="p9Video" class="p9-video" src="大眠.mp4" playsinline preload="auto" muted></video>
     <img class="p9-frame" src="9录制框2.png" alt="录制框">
     <div id="p9HintText" class="p9-hint-text">点击录制按钮，为小熊拍摄视频</div>
     <div id="p9RecordBtn" class="p9-record-btn">
@@ -878,7 +884,7 @@
 
   <!-- ========== 页面11 ========== -->
   <div id="page11" class="page">
-    <video id="p11Video" class="p11-video" src=""大眠.mp4" playsinline preload="auto" muted></video>
+    <video id="p11Video" class="p11-video" src="大眠.mp4" playsinline preload="auto" muted></video>
     <div id="p11SuccessImg" class="p11-success-img">
       <img src="9发布成功.png" alt="发布成功">
     </div>
@@ -964,14 +970,20 @@
   function resizeApp() {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const scale = Math.min(vw / DESIGN_W, vh / DESIGN_H);
-    app.style.transform = 'scale(' + scale + ')';
-    const scaledW = DESIGN_W * scale;
-    const scaledH = DESIGN_H * scale;
-    app.style.left = ((vw - scaledW) / 2) + 'px';
-    app.style.top = ((vh - scaledH) / 2) + 'px';
+    const scale = Math.max(vw / DESIGN_W, vh / DESIGN_H);
+    app.style.width = DESIGN_W + 'px';
+    app.style.height = DESIGN_H + 'px';
+    app.style.transform = 'translate(-50%, -50%) scale(' + scale + ')';
+    app.style.transformOrigin = 'center center';
   }
-  window.addEventListener('resize', resizeApp);
+  
+  function handleResize() {
+    resizeApp();
+  }
+  
+  window.addEventListener('resize', handleResize);
+  window.addEventListener('orientationchange', handleResize);
+  window.addEventListener('load', resizeApp);
   resizeApp();
 
   // ===== 全局状态 =====
@@ -980,8 +992,21 @@
   let isTyping = false;
   let dialogStep = 1;
   function getAppScale() {
-    return Math.min(window.innerWidth / DESIGN_W, window.innerHeight / DESIGN_H);
+    return Math.max(window.innerWidth / DESIGN_W, window.innerHeight / DESIGN_H);
   }
+
+  // ===== 阻止手机端默认触摸行为（防止背景移动） =====
+  document.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+  }, { passive: false });
+  
+  document.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+  }, { passive: false });
+  
+  document.addEventListener('touchend', function(e) {
+    e.preventDefault();
+  }, { passive: false });
 
   // ===== 背景音乐系统 =====
   const bgmAudio = new Audio('花日.mp3');
