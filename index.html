@@ -1,0 +1,1947 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=750, user-scalable=no, initial-scale=1">
+<title>见未见的世界</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+
+  /* ===== 视口自适应缩放 ===== */
+  #app {
+    width: 750px; height: 1440px;
+    position: absolute; top: 0; left: 0;
+    transform-origin: top left;
+    overflow: hidden; background: #000;
+  }
+
+  /* ===== 背景音乐开关 ===== */
+  .bgm-toggle {
+    position: absolute; top: 20px; right: 20px;
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    border: 2px solid rgba(255,255,255,0.5);
+    z-index: 9999;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.3s ease;
+  }
+  .bgm-toggle.off { background: rgba(0,0,0,0.4); border-color: rgba(255,255,255,0.2); }
+  .bgm-toggle svg { width: 24px; height: 24px; fill: #fff; }
+
+  /* ===== 页面通用 ===== */
+  .page {
+    position: absolute; top: 0; left: 0;
+    width: 750px; height: 1440px;
+    display: none; overflow: hidden;
+  }
+  .page.active { display: block; }
+  .page-bg {
+    position: absolute; top: 0; left: 0;
+    width: 750px; height: 1440px;
+    object-fit: cover;
+  }
+
+  /* ===== 页面切换动画 ===== */
+  .page-enter { animation: pageIn 0.6s ease forwards; }
+  @keyframes pageIn { from { opacity: 0; } to { opacity: 1; } }
+  .page-leave { animation: pageOut 0.4s ease forwards; }
+  @keyframes pageOut { from { opacity: 1; } to { opacity: 0; } }
+
+  /* ===== 页面1 ===== */
+  #page1 { cursor: pointer; }
+  #page1 .tap-hint {
+    position: absolute; bottom: 120px; left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255,255,255,0.7); font-size: 28px;
+    letter-spacing: 4px;
+    animation: hintPulse 2s ease-in-out infinite;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    white-space: nowrap;
+  }
+  @keyframes hintPulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+  /* ===== 页面2：对话 ===== */
+  .dialog-container {
+    position: absolute; left: 0; top: 916px;
+    width: 750px; opacity: 0;
+    transition: opacity 0.8s ease; z-index: 10;
+  }
+  .dialog-container.visible { opacity: 0.8; }
+  .dialog-box-img {
+    position: absolute; top: 0; left: 0;
+    width: 750px; height: 411px;
+    object-fit: contain; object-position: top left; z-index: 1;
+  }
+  .dialog-text {
+    position: absolute; left: 112px; top: 121px;
+    width: 526px; color: #4A2C0A;
+    font-size: 30px; line-height: 1.8;
+    text-align: left; min-height: 80px;
+    transition: opacity 0.4s ease; z-index: 3;
+  }
+  .dialog-text.fade-out { opacity: 0; }
+  .input-area {
+    position: absolute; left: 112px; top: 184px;
+    width: 526px;
+    display: flex; flex-direction: column; align-items: center;
+    opacity: 0; transition: opacity 0.5s ease; z-index: 4;
+  }
+  .input-area.visible { opacity: 1; }
+  .nickname-input {
+    width: 420px; height: 56px;
+    border: 3px solid #C49A6C; border-radius: 28px;
+    background: rgba(255,255,255,0.85);
+    padding: 0 24px; font-size: 22px; color: #4A2C0A;
+    outline: none; text-align: center; margin-bottom: 8px;
+  }
+  .nickname-input::placeholder { color: #B8A090; font-size: 20px; }
+  .nickname-input:focus { border-color: #8B6914; }
+  .submit-btn {
+    position: absolute; left: 50%; top: 267px;
+    width: 200px; height: auto;
+    transform: translateX(-50%);
+    object-fit: contain; opacity: 0;
+    cursor: pointer; z-index: 5;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+  }
+  .submit-btn.visible { opacity: 1; pointer-events: auto; }
+  .submit-btn.hidden { opacity: 0; pointer-events: none; }
+  .enter-btn {
+    position: absolute; left: 50%; top: 267px;
+    width: 200px; z-index: 20; opacity: 0;
+    transform: translateX(-50%);
+    transition: opacity 0.6s ease; cursor: pointer;
+    pointer-events: none;
+  }
+  .enter-btn.visible { opacity: 1; pointer-events: auto; }
+  .enter-btn img { width: 200px; height: auto; object-fit: contain; }
+  .typing-cursor {
+    display: inline-block; width: 2px; height: 30px;
+    background: #4A2C0A; margin-left: 2px;
+    vertical-align: middle; animation: blink 0.8s infinite;
+  }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+  .nickname-warning {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100; opacity: 0;
+    transition: opacity 0.3s ease; pointer-events: none;
+  }
+  .nickname-warning.visible { opacity: 1; pointer-events: auto; }
+  .nickname-warning img { width: 343px; height: 126px; object-fit: contain; }
+
+  /* ===== 页面3：声音地图 ===== */
+  .building-overlay {
+    position: absolute; z-index: 5;
+    transition: opacity 0.5s ease; pointer-events: none;
+  }
+  .building-overlay.matched { opacity: 0; }
+  .drop-zone {
+    position: absolute; z-index: 4;
+    border: 3px dashed transparent; border-radius: 12px;
+    transition: border-color 0.3s ease, background 0.3s ease;
+  }
+  .drop-zone.highlight { border-color: rgba(255,200,50,0.8); background: rgba(255,200,50,0.15); }
+  .drop-zone.matched { opacity: 0; pointer-events: none; }
+  .map-hint {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    bottom: 380px; width: 620px;
+    color: #4A2C0A; font-size: 26px; line-height: 1.6;
+    text-align: center; z-index: 6;
+    text-shadow: 0 1px 4px rgba(255,255,255,0.5);
+  }
+  .sound-icons {
+    position: absolute; top: 1140px;
+    left: 50%; transform: translateX(-50%);
+    display: flex; gap: 20px; z-index: 10;
+  }
+  .sound-icon {
+    position: relative; cursor: pointer;
+    transition: opacity 0.3s ease, transform 0.2s ease;
+    touch-action: none; user-select: none; -webkit-user-select: none;
+  }
+  .sound-icon img { width: 149px; height: 145px; object-fit: contain; pointer-events: none; }
+  .sound-icon.disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+  .sound-icon.selected { transform: scale(1.1); filter: brightness(1.2); }
+  .sound-icon.dragging { opacity: 1; z-index: 100; position: absolute; transform: scale(1.15); }
+  .sound-icon.matched { opacity: 0; pointer-events: none; }
+
+  /* ===== 页面4-7：故事页 ===== */
+  .story-box {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 650px; max-height: 1100px;
+    background: rgba(80,80,80,0.6);
+    border-radius: 24px; padding: 50px 40px;
+    z-index: 10; opacity: 0;
+    transition: opacity 0.6s ease; overflow-y: auto;
+  }
+  .story-box.visible { opacity: 1; }
+  .story-text { color: #fff; font-size: 26px; line-height: 1.9; text-align: justify; white-space: pre-wrap; }
+  .story-text .typing-cursor { background: #fff; height: 26px; }
+  .detail-btn {
+    position: absolute; bottom: 80px; right: 50px;
+    z-index: 20; opacity: 0;
+    transition: opacity 0.6s ease; cursor: pointer;
+  }
+  .detail-btn.visible { opacity: 1; }
+  .detail-btn img { width: 180px; height: auto; object-fit: contain; }
+  .detail-btn:active img { transform: scale(0.95); }
+
+  /* ===== 页面4b：盲文识别 ===== */
+  .p4b-btn-row {
+    position: absolute; top: 1177px; left: 0;
+    width: 750px;
+    display: flex; justify-content: center; gap: 30px;
+    z-index: 10;
+  }
+  .p4b-btn {
+    width: 220px; height: 95px;
+    cursor: pointer; transition: transform 0.15s ease;
+  }
+  .p4b-btn:active { transform: scale(0.95); }
+  .p4b-btn img { width: 220px; height: 95px; object-fit: contain; }
+  .p4b-result {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff; font-size: 52px; font-weight: bold;
+    z-index: 30; opacity: 0;
+    transition: opacity 0.3s ease;
+    text-shadow: 0 4px 12px rgba(0,0,0,0.6);
+    pointer-events: none;
+  }
+  .p4b-result.visible { opacity: 1; }
+
+  /* ===== 页面5b：琴键 ===== */
+  .p5b-keyboard {
+    position: absolute; top: 812px; left: 0;
+    width: 750px; height: 366px;
+    z-index: 5;
+  }
+  .p5b-keyboard img { width: 750px; height: 366px; object-fit: fill; }
+  .p5b-key-zone {
+    position: absolute; top: 0; height: 366px;
+    width: calc(750px / 7); /* ~107px each */
+    z-index: 6; cursor: pointer;
+    background: transparent;
+  }
+  .p5b-play-btn {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    border: 3px solid rgba(255,255,255,0.6);
+    z-index: 15; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s ease, transform 0.15s ease;
+  }
+  .p5b-play-btn:active { transform: translate(-50%, -50%) scale(0.9); background: rgba(255,255,255,0.4); }
+  .p5b-play-btn svg { width: 50px; height: 50px; fill: #fff; }
+  .p5b-start-btn {
+    position: absolute; top: 1235px; left: 50%;
+    transform: translateX(-50%);
+    width: 200px; height: auto;
+    z-index: 20; cursor: pointer;
+  }
+  .p5b-start-btn img { width: 200px; height: auto; object-fit: contain; }
+  .p5b-retry-btn {
+    position: absolute; top: 1235px; left: 50%;
+    transform: translateX(-50%);
+    width: 200px; height: auto;
+    z-index: 20; opacity: 0; cursor: pointer;
+    transition: opacity 0.4s ease; pointer-events: none;
+  }
+  .p5b-retry-btn.visible { opacity: 1; pointer-events: auto; }
+  .p5b-retry-btn img { width: 200px; height: auto; object-fit: contain; }
+  .p5b-result-img {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 30; opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+  .p5b-result-img.visible { opacity: 1; }
+  .p5b-result-img img { height: 120px; width: auto; object-fit: contain; }
+
+  /* ===== 页面6b：自行车整理 ===== */
+  .p6b-item {
+    position: absolute; z-index: 10;
+    transition: opacity 0.5s ease;
+    cursor: pointer;
+  }
+  .p6b-item.hidden { opacity: 0; pointer-events: none; }
+  .p6b-clean-item {
+    position: absolute; z-index: 10;
+    opacity: 0; transition: opacity 0.5s ease;
+    pointer-events: none;
+  }
+  .p6b-clean-item.visible { opacity: 1; }
+  .p6b-tidy-img {
+    position: absolute; z-index: 15;
+    left: 50%; transform: translateX(-50%);
+    opacity: 0; transition: opacity 0.8s ease;
+    pointer-events: none;
+  }
+  .p6b-tidy-img.visible { opacity: 1; }
+
+  /* ===== 页面8 ===== */
+  .p8-dialog-container {
+    position: absolute; left: 0; top: 916px;
+    width: 750px; opacity: 0;
+    transition: opacity 0.8s ease; z-index: 10;
+  }
+  .p8-dialog-container.visible { opacity: 0.8; }
+  .p8-dialog-box-img {
+    position: absolute; top: 0; left: 0;
+    width: 750px; height: 411px;
+    object-fit: contain; object-position: top left; z-index: 1;
+  }
+  .p8-dialog-text {
+    position: absolute; left: 112px; top: 121px;
+    width: 526px; color: #4A2C0A;
+    font-size: 30px; line-height: 1.8;
+    text-align: left; min-height: 80px; z-index: 3;
+  }
+  .p8-dialog-text .typing-cursor { background: #4A2C0A; height: 30px; }
+  .p8-next-btn {
+    position: absolute; left: 50%; top: 1183px;
+    width: 200px; z-index: 999; opacity: 0;
+    transform: translateX(-50%);
+    transition: opacity 0.6s ease; cursor: pointer;
+    pointer-events: none;
+  }
+  .p8-next-btn.visible { opacity: 1; pointer-events: auto; }
+  .p8-next-btn img { width: 200px; height: auto; object-fit: contain; }
+
+  /* ===== 页面9：视频录制 ===== */
+  #page9 { position: relative; background: #000; }
+  .p9-video {
+    position: absolute; top: 0; left: 0;
+    width: 750px; height: 1440px;
+    object-fit: cover; z-index: 1;
+  }
+  .p9-video.blurred { filter: blur(8px); transition: filter 0.5s ease; }
+  .p9-frame {
+    position: absolute; top: 0; left: 0;
+    width: 750px; height: 1440px;
+    object-fit: cover; z-index: 2; pointer-events: none;
+  }
+  .p9-record-btn {
+    position: absolute; left: 50%; bottom: 30px;
+    width: 150px; height: auto;
+    transform: translateX(-50%);
+    z-index: 5; cursor: pointer;
+  }
+  .p9-record-btn img { width: 150px; height: auto; object-fit: contain; }
+  .p9-hint-text {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff; font-size: 28px; line-height: 1.5;
+    text-align: center; z-index: 6;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    white-space: nowrap;
+    opacity: 1; transition: opacity 0.3s ease;
+  }
+  .p9-hint-text.hidden { opacity: 0; pointer-events: none; }
+  .p9-next-btn {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 343px; height: 126px;
+    z-index: 10; opacity: 0;
+    transition: opacity 0.6s ease; cursor: pointer;
+  }
+  .p9-next-btn.visible { opacity: 1; }
+  .p9-next-btn img { width: 343px; height: 126px; object-fit: contain; }
+
+  /* ===== 页面10：发布编辑 ===== */
+  #page10 { position: relative; }
+  .p10-options {
+    position: absolute; left: 75px; top: 590px;
+    width: 600px;
+    display: flex; flex-direction: column; gap: 40px;
+    z-index: 5;
+  }
+  .p10-option {
+    width: 100%; min-height: 100px;
+    background: rgba(255,255,255,0.85);
+    border-radius: 20px; border: 3px solid transparent;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px 28px; cursor: pointer;
+    transition: border-color 0.3s ease, transform 0.2s ease;
+    font-size: 28px; color: #333;
+  }
+  .p10-option:active { transform: scale(0.97); }
+  .p10-option.selected { border-color: #8B6914; border-radius: 20px; }
+  .p10-custom-input {
+    width: 100%; border: none; background: transparent;
+    font-size: 28px; color: #333; text-align: center; outline: none;
+  }
+  .p10-custom-input::placeholder { color: #999; }
+  .p10-publish-btn {
+    position: absolute; left: 50%; bottom: 60px;
+    width: 393px; height: 110px;
+    transform: translateX(-50%);
+    z-index: 10; cursor: pointer;
+  }
+  .p10-publish-btn img { width: 393px; height: 110px; object-fit: contain; }
+
+  /* ===== 页面11：发布成功 ===== */
+  #page11 { position: relative; background: #000; }
+  .p11-video {
+    position: absolute; top: 0; left: 0;
+    width: 750px; height: 1440px;
+    object-fit: cover; z-index: 1;
+  }
+  .p11-success-img {
+    position: absolute; left: 50%; top: 117px;
+    width: 385px; height: 108px;
+    transform: translateX(-50%);
+    z-index: 20; opacity: 0;
+    transition: opacity 0.5s ease; pointer-events: none;
+  }
+  .p11-success-img.visible { opacity: 1; }
+  .p11-success-img img { width: 385px; height: 108px; object-fit: contain; }
+  .p11-danmaku-container {
+    position: absolute; top: 30px; left: 0;
+    width: 750px; height: 350px;
+    z-index: 9999; pointer-events: none; overflow: visible;
+  }
+  .p11-danmaku {
+    position: absolute; color: #fff; font-size: 28px;
+    white-space: nowrap;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+    animation: danmakuMove linear forwards; opacity: 0.95;
+  }
+  @keyframes danmakuMove { from { transform: translateX(750px); } to { transform: translateX(-100%); } }
+  .p11-bottom-bar {
+    position: absolute; bottom: 0; left: 0;
+    width: 750px; z-index: 5;
+    display: flex; flex-direction: column;
+  }
+  .p11-progress-bar {
+    width: 750px; height: 3px;
+    background: rgba(255,255,255,0.15);
+    position: relative; z-index: 6;
+  }
+  .p11-progress-fill {
+    height: 100%; background: rgba(255,255,255,0.6);
+    width: 0%; transition: width 0.3s linear;
+  }
+  .p11-info-row {
+    display: flex; align-items: center;
+    padding: 16px 30px; gap: 16px;
+  }
+  .p11-avatar {
+    width: 72px; height: 72px; border-radius: 50%;
+    object-fit: cover; border: 2px solid #fff; flex-shrink: 0;
+  }
+  .p11-account-name { color: #fff; font-size: 26px; font-weight: bold; }
+  .p11-caption { color: #fff; font-size: 28px; line-height: 1.5; padding: 0 30px 16px 30px; }
+  .p11-likes-img { width: 750px; height: auto; display: block; object-fit: contain; }
+  /* 5继续.png: 无灰框，图层最上面，透明度100% */
+  .p11-continue-btn {
+    position: absolute; bottom: 400px; left: 50%;
+    transform: translateX(-50%);
+    width: 220px; height: auto;
+    z-index: 999999; opacity: 0;
+    transition: opacity 0.6s ease; cursor: pointer;
+    pointer-events: none;
+  }
+  .p11-continue-btn.visible { opacity: 1 !important; pointer-events: auto !important; }
+  .p11-continue-btn img { width: 220px; height: auto; object-fit: contain; display: block; }
+
+  /* ===== 页面12：卡片轮播 ===== */
+  #page12 { position: relative; overflow: hidden; }
+  .card-carousel {
+    position: absolute;
+    top: 420px; left: 0;
+    width: 750px; height: 750px;
+    perspective: 1200px;
+    overflow: visible;
+  }
+  .card-wrapper {
+    position: absolute;
+    width: 380px; height: 570px;
+    top: 0; left: 50%;
+    margin-left: -190px;
+    transition: transform 0.5s cubic-bezier(0.25,0.46,0.45,0.94),
+                opacity 0.5s ease;
+    cursor: pointer;
+    transform-style: preserve-3d;
+  }
+  .card-inner {
+    position: relative;
+    width: 100%; height: 100%;
+    transform-style: preserve-3d;
+    transition: transform 0.7s cubic-bezier(0.4,0,0.2,1);
+  }
+  .card-wrapper.flipped .card-inner {
+    transform: rotateY(180deg);
+  }
+  .card-face {
+    position: absolute;
+    width: 100%; height: 100%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .card-face.card-front {
+    box-shadow: 5px 8px 20px rgba(30,30,30,0.9),
+                -3px -3px 10px rgba(30,30,30,0.5),
+                0 0 30px rgba(0,0,0,0.4);
+  }
+  .card-face.card-front img {
+    width: 100%; height: 100%;
+    object-fit: cover; border-radius: 16px;
+  }
+  .card-face.card-back {
+    transform: rotateY(180deg);
+    border: 3px solid rgba(255,255,255,0.85);
+    border-radius: 16px;
+    box-shadow: 0 0 25px rgba(255,255,255,0.6),
+                0 0 50px rgba(255,255,255,0.25),
+                0 0 80px rgba(255,255,255,0.1),
+                inset 0 0 20px rgba(255,255,255,0.15);
+  }
+  .card-face.card-back img {
+    width: 100%; height: 100%;
+    object-fit: cover; border-radius: 13px;
+  }
+  /* 卡面下方PNG标签 */
+  .card-png-label {
+    position: absolute;
+    top: calc(100% + 30px);
+    left: 50%; transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.8s ease 0.4s;
+    pointer-events: none;
+    z-index: 20;
+  }
+  .card-png-label.visible { opacity: 1; }
+  .card-png-label img { object-fit: contain; display: block; }
+  /* 滑动提示 */
+  .swipe-hint {
+    position: absolute;
+    bottom: 120px; left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255,255,255,0.6);
+    font-size: 26px;
+    animation: swipeHint 2.5s ease-in-out infinite;
+    white-space: nowrap;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  }
+  /* 5下一页.png: 9%线性→172×63, PS坐标(480,1187) */
+  .p12-next-btn {
+    position: absolute; left: 480px; top: 1187px;
+    width: 172px; height: 63px;
+    z-index: 30; opacity: 0;
+    transition: opacity 0.6s ease; cursor: pointer;
+    pointer-events: none;
+  }
+  .p12-next-btn.visible { opacity: 1; pointer-events: auto; }
+  .p12-next-btn img { width: 172px; height: 63px; object-fit: contain; }
+
+  /* ===== 页面13 ===== */
+  #page13 { position: relative; }
+  .p13-character {
+    position: absolute; left: 0; bottom: 0;
+    width: 750px; z-index: 5;
+    transition: opacity 0.8s ease;
+  }
+  .p13-character.hidden { opacity: 0; }
+  .p13-character img { width: 750px; display: block; }
+  .p13-dialog {
+    position: absolute; left: 50%; top: 916px;
+    width: 660px; height: 316px;
+    transform: translateX(-50%);
+    z-index: 10; opacity: 0;
+    transition: opacity 0.8s ease;
+  }
+  .p13-dialog.visible { opacity: 1; }
+  .p13-dialog.hidden { opacity: 0; }
+  .p13-dialog img {
+    width: 660px; height: 316px;
+    object-fit: contain; z-index: 1;
+    opacity: 0.9;
+  }
+  .p13-dialog-text {
+    position: absolute; left: 90px; top: 90px;
+    width: 460px; color: #4A2C0A;
+    font-size: 26px; line-height: 1.7;
+    text-align: left; z-index: 3;
+  }
+  .p13-dialog-text .typing-cursor { background: #4A2C0A; height: 26px; }
+  .p13-view-btn {
+    position: absolute; left: 50%; bottom: 25px;
+    width: 191px; height: 70px;
+    transform: translateX(-50%);
+    z-index: 15; opacity: 0;
+    transition: opacity 0.6s ease; cursor: pointer;
+    pointer-events: none;
+  }
+  .p13-view-btn.visible { opacity: 1; pointer-events: auto; }
+  .p13-view-btn.hidden { opacity: 0; pointer-events: none; }
+  .p13-view-btn img { width: 191px; height: 70px; object-fit: contain; }
+  /* 画廊区域：两张图竖向居中并排 */
+  .p13-gallery {
+    position: absolute; top: 490px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; gap: 40px; align-items: center;
+    z-index: 20; opacity: 0;
+    transition: opacity 0.8s ease;
+    pointer-events: none;
+  }
+  .p13-gallery.visible { opacity: 1; pointer-events: auto; }
+  .p13-gallery-item {
+    width: 259px; height: 460px;
+    border-radius: 16px;
+    box-shadow: 0 0 15px rgba(255,255,255,0.5),
+                0 0 25px rgba(255,255,255,0.2),
+                4px 6px 12px rgba(0,0,0,0.5);
+    overflow: hidden; cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
+    position: relative; z-index: 20;
+  }
+  .p13-gallery-item img {
+    width: 100%; height: 100%;
+    object-fit: cover; border-radius: 16px;
+  }
+  .p13-gallery-item.zoomed {
+    width: 380px; height: 670px;
+    z-index: 100; position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 20px rgba(255,255,255,0.6),
+                0 0 35px rgba(255,255,255,0.25),
+                6px 8px 15px rgba(0,0,0,0.5);
+  }
+  .p13-listen-btn {
+    position: absolute; left: 50%; top: 1200px;
+    width: 191px; height: 70px;
+    transform: translateX(-50%);
+    z-index: 25; opacity: 0;
+    transition: opacity 0.6s ease; cursor: pointer;
+    pointer-events: none;
+  }
+  .p13-listen-btn.visible { opacity: 1; pointer-events: auto; }
+  .p13-listen-btn img { width: 191px; height: 70px; object-fit: contain; }
+  .p13-gallery-hint {
+    position: absolute; left: 50%;
+    transform: translateX(-50%);
+    top: 1080px;
+    color: #fff; font-size: 22px;
+    text-align: center; z-index: 25;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+    pointer-events: none;
+  }
+  .p13-gallery-hint.visible {
+    opacity: 1;
+    animation: slowBlink 2s ease-in-out infinite;
+  }
+  @keyframes slowBlink { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+  /* ===== 页面14 ===== */
+  #page14 { position: relative; }
+  .p14-character {
+    position: absolute; left: 0; bottom: 0;
+    width: 750px; z-index: 5;
+  }
+  .p14-character img { width: 750px; display: block; }
+  .p14-dialog {
+    position: absolute; left: 50%; top: 916px;
+    width: 660px; height: 316px;
+    transform: translateX(-50%);
+    z-index: 10; opacity: 0;
+    transition: opacity 0.8s ease;
+  }
+  .p14-dialog.visible { opacity: 1; }
+  .p14-dialog img {
+    width: 660px; height: 316px;
+    object-fit: contain; z-index: 1;
+    opacity: 0.9;
+  }
+  .p14-dialog-text {
+    position: absolute; left: 90px; top: 90px;
+    width: 460px; color: #4A2C0A;
+    font-size: 26px; line-height: 1.7;
+    text-align: left; z-index: 3;
+  }
+  .p14-dialog-text .typing-cursor { background: #4A2C0A; height: 26px; }
+  .p14-end-btn {
+    position: absolute; left: 50%; bottom: 25px;
+    width: 191px; height: 70px;
+    transform: translateX(-50%);
+    z-index: 15; opacity: 0;
+    transition: opacity 0.6s ease; cursor: pointer;
+    pointer-events: none;
+  }
+  .p14-end-btn.visible { opacity: 1; pointer-events: auto; }
+  .p14-end-btn img { width: 191px; height: 70px; object-fit: contain; }
+
+  /* ===== 页面15 ===== */
+  #page15 { position: relative; }
+  .p15-video {
+    position: absolute; top: 0; left: 0;
+    width: 750px; height: 1440px;
+    object-fit: cover; z-index: 1;
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- 背景音乐开关 -->
+  <div id="bgmToggle" class="bgm-toggle">
+    <svg viewBox="0 0 24 24"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6zM8 5v2H4v10h4v2H2V5h6z"/></svg>
+  </div>
+
+  <!-- ========== 页面1 ========== -->
+  <div id="page1" class="page active">
+    <img class="page-bg" src="小熊素材/1初始页面.jpg" alt="初始页面">
+    <div class="tap-hint">轻触屏幕，开始旅程</div>
+  </div>
+
+  <!-- ========== 页面2 ========== -->
+  <div id="page2" class="page">
+    <img class="page-bg" src="小熊素材/1初见面形象.jpg" alt="初见面形象">
+    <div id="dialogContainer" class="dialog-container">
+      <img class="dialog-box-img" src="小熊素材/3对话框.png" alt="对话框">
+      <div id="dialogText" class="dialog-text"></div>
+      <div id="inputArea" class="input-area">
+        <input id="nicknameInput" class="nickname-input" type="text" placeholder="请输入你的昵称" maxlength="10">
+      </div>
+      <img id="submitBtn" class="submit-btn" src="小熊素材/5提交.png" alt="提交">
+      <div id="enterBtn" class="enter-btn">
+        <img src="小熊素材/5走进小熊.png" alt="走进小熊">
+      </div>
+    </div>
+    <div id="nicknameWarning" class="nickname-warning">
+      <img src="小熊素材/5还未输入昵称.png" alt="还未输入昵称">
+    </div>
+  </div>
+
+  <!-- ========== 页面3 ========== -->
+  <div id="page3" class="page">
+    <img class="page-bg" src="小熊素材/6声音地图.jpg" alt="声音地图">
+    <img id="building-qinfang" class="building-overlay" src="小熊素材/7琴房.png" style="left:38px;top:117px;width:250px;height:218px;">
+    <img id="building-xuexiao" class="building-overlay" src="小熊素材/7学校.png" style="left:377px;top:162px;width:360px;height:240px;">
+    <!-- 7公益服务点.png: 原基础上再放大2% → 285×262 -->
+    <img id="building-gongyi" class="building-overlay" src="小熊素材/7公益服务点.png" style="left:0;top:604px;width:285px;height:262px;">
+    <img id="building-pailianshi" class="building-overlay" src="小熊素材/7排练室.png" style="left:408px;top:646px;width:268px;height:227px;">
+    <div id="zone-qinfang" class="drop-zone" data-building="qinfang" style="left:20px;top:90px;width:270px;height:260px;"></div>
+    <div id="zone-xuexiao" class="drop-zone" data-building="xuexiao" style="left:360px;top:130px;width:380px;height:280px;"></div>
+    <div id="zone-gongyi" class="drop-zone" data-building="gongyi" style="left:-10px;top:570px;width:290px;height:300px;"></div>
+    <div id="zone-pailianshi" class="drop-zone" data-building="pailianshi" style="left:390px;top:610px;width:280px;height:270px;"></div>
+    <div class="map-hint">点击语音条试听，并拖拽到对应的地点，和小熊一起完成这张声音地图吧！</div>
+    <div class="sound-icons">
+      <div class="sound-icon" data-index="0"><img src="小熊素材/4声音播放.png" alt="声音1"></div>
+      <div class="sound-icon" data-index="1"><img src="小熊素材/4声音播放.png" alt="声音2"></div>
+      <div class="sound-icon" data-index="2"><img src="小熊素材/4声音播放.png" alt="声音3"></div>
+      <div class="sound-icon" data-index="3"><img src="小熊素材/4声音播放.png" alt="声音4"></div>
+    </div>
+  </div>
+
+  <!-- ========== 页面4 ========== -->
+  <div id="page4" class="page detail-page">
+    <img class="page-bg" src="小熊素材/8学校.jpg" alt="学校">
+    <div id="storyBox4" class="story-box"><div id="storyText4" class="story-text"></div></div>
+    <div id="nextBtn4" class="detail-btn"><img src="小熊素材/5继续.png" alt="继续"></div>
+  </div>
+
+  <!-- ========== 页面4b（盲文识别游戏） ========== -->
+  <div id="page4b" class="page">
+    <img class="page-bg" src="小熊素材/11盲文背景.jpg" alt="盲文背景">
+    <div class="p4b-btn-row">
+      <div id="p4bPipes" class="p4b-btn"><img src="小熊素材/11pipes.png" alt="pipes"></div>
+      <div id="p4bPitch" class="p4b-btn"><img src="小熊素材/11pitch.png" alt="pitch"></div>
+      <div id="p4bPiano" class="p4b-btn"><img src="小熊素材/11piano.png" alt="piano"></div>
+    </div>
+    <div id="p4bResult" class="p4b-result">答对啦！</div>
+  </div>
+
+  <!-- ========== 页面5 ========== -->
+  <div id="page5" class="page detail-page">
+    <img class="page-bg" src="小熊素材/8乐队排练.jpg" alt="乐队排练">
+    <div id="storyBox5" class="story-box"><div id="storyText5" class="story-text"></div></div>
+    <div id="nextBtn5" class="detail-btn"><img src="小熊素材/5继续.png" alt="继续"></div>
+  </div>
+
+  <!-- ========== 页面5b（琴键游戏） ========== -->
+  <div id="page5b" class="page">
+    <img class="page-bg" src="小熊素材/11乐队背景.jpg" alt="乐队背景">
+    <div class="p5b-play-btn" id="p5bPlayBtn">
+      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    </div>
+    <div class="p5b-keyboard" id="p5bKeyboard">
+      <img src="小熊素材/11琴键.png" alt="琴键">
+      <div class="p5b-key-zone" data-key="1" style="left:0;"></div>
+      <div class="p5b-key-zone" data-key="2" style="left:107px;"></div>
+      <div class="p5b-key-zone" data-key="3" style="left:214px;"></div>
+      <div class="p5b-key-zone" data-key="4" style="left:321px;"></div>
+      <div class="p5b-key-zone" data-key="5" style="left:428px;"></div>
+      <div class="p5b-key-zone" data-key="6" style="left:535px;"></div>
+      <div class="p5b-key-zone" data-key="7" style="left:642px;"></div>
+    </div>
+    <div id="p5bStartBtn" class="p5b-start-btn"><img src="小熊素材/5开始.png" alt="开始"></div>
+    <div id="p5bRetryBtn" class="p5b-retry-btn"><img src="小熊素材/5再试一次.png" alt="再试一次"></div>
+    <div id="p5bResultImg" class="p5b-result-img"><img src="小熊素材/11成功.png" alt="成功"></div>
+    <div id="p5bErrorImg" class="p5b-result-img"><img src="小熊素材/11错误.png" alt="错误"></div>
+  </div>
+
+  <!-- ========== 页面6 ========== -->
+  <div id="page6" class="page detail-page">
+    <img class="page-bg" src="小熊素材/8志愿服务.jpg" alt="志愿服务">
+    <div id="storyBox6" class="story-box"><div id="storyText6" class="story-text"></div></div>
+    <div id="nextBtn6" class="detail-btn"><img src="小熊素材/5继续.png" alt="继续"></div>
+  </div>
+
+  <!-- ========== 页面6b（自行车整理游戏） ========== -->
+  <div id="page6b" class="page">
+    <img class="page-bg" src="小熊素材/11自行车背景.jpg" alt="自行车背景">
+    <!-- 11有杂物.png: 28%→502×81, 居中, Y=170, 渐显 -->
+    <div id="p6bMessy" class="p6b-item" style="left:124px;top:170px;width:502px;height:81px;">
+      <img src="小熊素材/11有杂物.png" alt="有杂物" style="width:502px;height:81px;object-fit:contain;">
+    </div>
+    <!-- 11乱停自行车.png: 22%线性→337×289, (180,498) -->
+    <div id="p6bBadBike" class="p6b-item" style="left:180px;top:498px;width:337px;height:289px;">
+      <img src="小熊素材/11乱停自行车.png" alt="乱停自行车" style="width:337px;height:289px;object-fit:contain;">
+    </div>
+    <!-- 11整齐自行车.png: 17%线性→260×224, (380,493) -->
+    <div id="p6bGoodBike" class="p6b-clean-item" style="left:380px;top:493px;width:260px;height:224px;">
+      <img src="小熊素材/11整齐自行车.png" alt="整齐自行车" style="width:260px;height:224px;object-fit:contain;">
+    </div>
+    <!-- 11垃圾.png: 14%→103×65, (204,951) -->
+    <div id="p6bGarbage" class="p6b-item" style="left:204px;top:951px;width:103px;height:65px;">
+      <img src="小熊素材/11垃圾.png" alt="垃圾" style="width:103px;height:65px;object-fit:contain;">
+    </div>
+    <!-- 11整洁.png: 29%→476×52, 居中 -->
+    <div id="p6bTidy" class="p6b-tidy-img" style="top:170px;width:476px;height:52px;">
+      <img src="小熊素材/11整洁.png" alt="整洁" style="width:476px;height:52px;object-fit:contain;">
+    </div>
+  </div>
+
+  <!-- ========== 页面7 ========== -->
+  <div id="page7" class="page detail-page">
+    <img class="page-bg" src="小熊素材/8琴房.jpg" alt="琴房">
+    <div id="storyBox7" class="story-box"><div id="storyText7" class="story-text"></div></div>
+    <div id="nextBtn7" class="detail-btn"><img src="小熊素材/5进入琴房.png" alt="进入琴房"></div>
+  </div>
+
+  <!-- ========== 页面8 ========== -->
+  <div id="page8" class="page">
+    <img class="page-bg" src="小熊素材/8琴房红衣服.jpg" alt="琴房红衣服">
+    <div id="p8DialogContainer" class="p8-dialog-container">
+      <img class="p8-dialog-box-img" src="小熊素材/3对话框.png" alt="对话框">
+      <div id="p8DialogText" class="p8-dialog-text"></div>
+    </div>
+    <div id="p8NextBtn" class="p8-next-btn">
+      <img src="小熊素材/5好呀.png" alt="好呀">
+    </div>
+  </div>
+
+  <!-- ========== 页面9 ========== -->
+  <div id="page9" class="page">
+    <video id="p9Video" class="p9-video" src="小熊声音素材/大眠.mp4" playsinline preload="auto" muted></video>
+    <img class="p9-frame" src="小熊素材/9录制框2.png" alt="录制框">
+    <div id="p9HintText" class="p9-hint-text">点击录制按钮，为小熊拍摄视频</div>
+    <div id="p9RecordBtn" class="p9-record-btn">
+      <img src="小熊素材/9录制.png" alt="录制">
+    </div>
+    <div id="p9NextBtn" class="p9-next-btn">
+      <img src="小熊素材/5发布界面.png" alt="发布界面">
+    </div>
+  </div>
+
+  <!-- ========== 页面10 ========== -->
+  <div id="page10" class="page">
+    <img class="page-bg" src="小熊素材/9发布页.jpg" alt="发布页">
+    <div class="p10-options">
+      <div class="p10-option" data-caption="一首《大眠》送给大家~">一首《大眠》送给大家~</div>
+      <div class="p10-option" data-caption="今日份弹唱，欢迎大家点歌~">今日份弹唱，欢迎大家点歌~</div>
+      <div class="p10-option" data-caption="和手机恋爱吧哈哈哈哈哈哈">和手机恋爱吧哈哈哈哈哈哈</div>
+      <div class="p10-option p10-custom-option" data-caption="">
+        <input class="p10-custom-input" type="text" placeholder="自定义文案..." maxlength="30">
+      </div>
+    </div>
+    <div id="p10PublishBtn" class="p10-publish-btn">
+      <img src="小熊素材/9发布作品.png" alt="发布作品">
+    </div>
+  </div>
+
+  <!-- ========== 页面11 ========== -->
+  <div id="page11" class="page">
+    <video id="p11Video" class="p11-video" src="小熊声音素材/大眠.mp4" playsinline preload="auto" muted></video>
+    <div id="p11SuccessImg" class="p11-success-img">
+      <img src="小熊素材/9发布成功.png" alt="发布成功">
+    </div>
+    <div class="p11-danmaku-container" id="p11DanmakuContainer"></div>
+    <div class="p11-bottom-bar">
+      <div class="p11-info-row">
+        <img class="p11-avatar" src="小熊素材/小熊头像.jpg" alt="头像">
+        <span class="p11-account-name">熊好好同学</span>
+      </div>
+      <div id="p11Caption" class="p11-caption"></div>
+      <div class="p11-progress-bar"><div id="p11ProgressFill" class="p11-progress-fill"></div></div>
+      <img class="p11-likes-img" src="小熊素材/9点赞评论.jpg" alt="点赞评论">
+    </div>
+    <div id="p11ContinueBtn" class="p11-continue-btn">
+      <img src="小熊素材/5继续.png" alt="继续">
+    </div>
+  </div>
+
+  <!-- ========== 页面12 ========== -->
+  <div id="page12" class="page">
+    <img class="page-bg" src="小熊素材/12卡片背景.jpg" alt="卡片背景">
+    <div id="cardCarousel" class="card-carousel"></div>
+    <div class="swipe-hint">滑动点击翻看小熊的身份卡片</div>
+    <div id="p12NextBtn" class="p12-next-btn">
+      <img src="小熊素材/5下一页.png" alt="下一页">
+    </div>
+  </div>
+
+  <!-- ========== 页面13 ========== -->
+  <div id="page13" class="page">
+    <img class="page-bg" src="小熊素材/12卡片背景.jpg" alt="背景">
+    <div id="p13Character" class="p13-character">
+      <img src="小熊素材/小熊礼服2.png" alt="小熊礼服">
+    </div>
+    <div id="p13Dialog" class="p13-dialog">
+      <img src="小熊素材/5对话框.png" alt="对话框">
+      <div id="p13DialogText" class="p13-dialog-text"></div>
+      <div id="p13ViewBtn" class="p13-view-btn">
+        <img src="小熊素材/5查看成果.png" alt="查看成果">
+      </div>
+    </div>
+    <div id="p13Gallery" class="p13-gallery">
+      <div class="p13-gallery-item" id="p13MapItem">
+        <img src="小熊素材/6地图全景.png" alt="地图全景">
+      </div>
+      <div class="p13-gallery-item" id="p13ShowItem">
+        <img src="小熊素材/12展示.jpg" alt="展示">
+      </div>
+    </div>
+    <div id="p13GalleryHint" class="p13-gallery-hint">点击图片放大</div>
+    <div id="p13ListenBtn" class="p13-listen-btn">
+      <img src="小熊素材/5听心声.png" alt="听心声">
+    </div>
+  </div>
+
+  <!-- ========== 页面14 ========== -->
+  <div id="page14" class="page">
+    <img class="page-bg" src="小熊素材/13结尾.jpg" alt="结尾">
+    <div id="p14Character" class="p14-character">
+      <img src="小熊素材/小熊礼服2.png" alt="小熊礼服">
+    </div>
+    <div id="p14Dialog" class="p14-dialog">
+      <img src="小熊素材/5对话框.png" alt="对话框">
+      <div id="p14DialogText" class="p14-dialog-text"></div>
+      <div id="p14EndBtn" class="p14-end-btn">
+        <img src="小熊素材/5结束.png" alt="结束">
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 页面15 ========== -->
+  <div id="page15" class="page">
+    <video id="p15Video" class="p15-video" src="小熊素材/最后.mp4" playsinline preload="auto" muted loop></video>
+  </div>
+</div>
+
+<script>
+  // ===== 视口自适应缩放 =====
+  const DESIGN_W = 750;
+  const DESIGN_H = 1440;
+  const app = document.getElementById('app');
+
+  function resizeApp() {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const scale = Math.min(vw / DESIGN_W, vh / DESIGN_H);
+    app.style.transform = 'scale(' + scale + ')';
+    const scaledW = DESIGN_W * scale;
+    const scaledH = DESIGN_H * scale;
+    app.style.left = ((vw - scaledW) / 2) + 'px';
+    app.style.top = ((vh - scaledH) / 2) + 'px';
+  }
+  window.addEventListener('resize', resizeApp);
+  resizeApp();
+
+  // ===== 全局状态 =====
+  let currentPage = '1';
+  let nickname = '';
+  let isTyping = false;
+  let dialogStep = 1;
+  function getAppScale() {
+    return Math.min(window.innerWidth / DESIGN_W, window.innerHeight / DESIGN_H);
+  }
+
+  // ===== 背景音乐系统 =====
+  const bgmAudio = new Audio('小熊声音素材/花日.mp3');
+  bgmAudio.loop = true;
+  bgmAudio.volume = 0.4;
+  let bgmPlaying = false;
+  let bgmEnabled = true;
+  let bgmFirstPlay = true;
+
+  function startBgm() {
+    if (!bgmEnabled) return;
+    bgmPlaying = true;
+    bgmAudio.play().catch(() => {});
+  }
+  function pauseBgm() {
+    bgmPlaying = false;
+    bgmAudio.pause();
+  }
+  function resumeBgm() {
+    if (!bgmEnabled || bgmPlaying) return;
+    bgmPlaying = true;
+    bgmAudio.play().catch(() => {});
+  }
+
+  const bgmToggle = document.getElementById('bgmToggle');
+  bgmToggle.addEventListener('click', function() {
+    bgmEnabled = !bgmEnabled;
+    if (bgmEnabled) {
+      this.classList.remove('off');
+      if (shouldBgmPlay(currentPage)) startBgm();
+    } else {
+      this.classList.add('off');
+      pauseBgm();
+    }
+  });
+
+  function shouldBgmPlay(page) {
+    // No 花日bgm: 3,4,5,6,7,9,11,5b,14
+    // With 花日bgm: 1,2,8,4b,6b,12,13
+    const noBgm = ['3','4','5','6','7','9','11','5b','14','15'];
+    return !noBgm.includes(page);
+  }
+
+  // ===== 页面14专属音乐：升华.mp3 =====
+  const shenghuaAudio = new Audio('小熊声音素材/升华.mp3');
+  shenghuaAudio.loop = true;
+  shenghuaAudio.volume = 0.5;
+
+  // ===== 页面4-7专属音乐 =====
+  const pageMusic = {
+    '4': new Audio('小熊声音素材/学校音乐.mp3'),
+    '5': new Audio('小熊声音素材/排练室音乐.mp3'),
+    '6': new Audio('小熊声音素材/志愿点音乐.mp3'),
+    '7': new Audio('小熊声音素材/琴房音乐.mp3')
+  };
+  let currentPageMusic = null;
+
+  function playPageMusic(page) {
+    if (currentPageMusic) { currentPageMusic.pause(); currentPageMusic.currentTime = 0; }
+    currentPageMusic = pageMusic[page];
+    if (currentPageMusic) currentPageMusic.play().catch(() => {});
+  }
+  function stopPageMusic() {
+    if (currentPageMusic) { currentPageMusic.pause(); currentPageMusic.currentTime = 0; }
+    currentPageMusic = null;
+  }
+
+  // ===== 配对顺序 =====
+  const pairSequence = [
+    { audio: '小熊声音素材/下课铃声.mp3',     building: 'xuexiao',     detailPage: '4' },
+    { audio: '小熊声音素材/小熊乐队排练.mp3', building: 'pailianshi',  detailPage: '5' },
+    { audio: '小熊声音素材/助盲小课堂.mp3',   building: 'gongyi',      detailPage: '6' },
+    { audio: '小熊声音素材/钢琴声音.mp3',     building: 'qinfang',     detailPage: '7' }
+  ];
+  let currentPairIndex = 0;
+  let selectedIcon = null;
+  let matchedBuildings = new Set();
+  let matchedIcons = new Set();
+  let currentAudio = null;
+  const correctSound = new Audio('小熊声音素材/答对.mp3');
+  const wrongSound = new Audio('小熊声音素材/错误.mp3');
+
+  // ===== 详情页文字 =====
+  const storyContent = {
+    '4': `一岁多时，一场意外的医疗事故灼伤视神经，小熊眼前只剩下微弱的光感。妈妈买来一架电子琴，清脆的琴声，成了她童年最温暖的底色，也成了她与世界对话的第一种方式。\n\n六岁那年，小熊偶然听见了真实的钢琴声。比电子琴更灵动的音色深深打动了她。从那一刻起，她坚定了学琴的心意。\n\n小熊以惊人的记忆力与不懈坚持，在黑白琴键间追逐音乐梦想。一路走来，她斩获上海国际青少年钢琴大赛冠军，也曾有幸与钢琴大师郎朗同台演出。\n\n小熊常说，音乐是她的全部。琴声响起，她就能听见花开的声音，看见世界的模样。\n\n真正的看见，从不是怜悯的凝视，而是平等的理解，是看见每一个困境里，永不熄灭的生命力。`,
+    '5': `回响乐队，是一支由视障朋友们组成的原创乐队。对他们来说，眼睛看不见世界，耳朵和声音，却能接住生活的温柔与力量。小熊是乐队的一员，也是在音乐世界里认真发光的普通人。\n\n乐队坚持原创创作，将传统民乐和现代音乐形式结合，不断尝试与打磨，唱出属于他们自己的声音。\n\n他们的音乐没有刻意煽情，却格外打动人心。每一段旋律，都是直面困境的坚持；每一首歌曲，都是对热爱的笃定。他们用音乐告诉所有人，缺憾不会定义人生，热爱可以冲破一切局限。\n\n对小熊而言，回响乐队不只是实现梦想的地方，更是一群同频伙伴相互支撑、彼此温暖的港湾。他们并肩演奏、真诚歌唱，用纯粹的音乐，为自己、也为每一个听众，留下最动人的生命回响。`,
+    '6': `据统计，目前我国共有1700多万名视障人士，相当于每80个人中就有1位。对他们而言，比起特殊的照顾和怜悯同情，发自内心的平等看见、正常相处，才是最珍贵的善意。\n\n小熊一直在做一件温暖且有意义的事——志愿培训服务工作。\n\n很多人想要帮助视障群体，却常常因为不够了解，不知如何正确相处，或是用错方式，造成不必要的尴尬与困扰，让善意变成了负担。\n\n小熊结合自己真实的生活经历，耐心指导志愿者，教会大家如何自然地和视障朋友相处，怎样恰到好处地提供帮助。\n\n她希望通过自己的分享，消除大众对视障群体的固有误解，让更多人学会尊重、平等的相处方式，让善意被正确地传递，让温暖包容的氛围覆盖更多角落。`,
+    '7': `小熊还有另一个温暖身份——自媒体博主。她在小红书、抖音等平台，运营着自己的账号「熊好好同学」。\n\n和刻意包装的网络内容不同，小熊的账号始终主打真实。她认真记录自己的日常：弹奏钢琴、翻唱歌曲，分享属于视障群体的真实生活点滴。她不刻意放大苦难，也不刻意美化生活，只是坦然、真诚地展示自己最普通的生活状态。\n\n她希望通过自己的分享，打破大众对视障群体的刻板印象。让更多人看见，视障生活有不便、有挑战，但同样有热爱、有乐趣、有闪闪发光的日常。\n\n借着网络的力量，小熊传播着无障碍理念。她用最朴素的日常分享，拉近大众与视障群体的距离，让理解与包容，被更多人看见并传递下去。`
+  };
+
+  // ===== 页面切换 =====
+  function switchPage(from, to, skipAnim) {
+    const fromEl = document.getElementById('page' + from);
+    const toEl = document.getElementById('page' + to);
+
+    // 离开清理
+    if (from === '9') {
+      document.getElementById('p9Video').pause();
+      if (p9Timer) { clearTimeout(p9Timer); p9Timer = null; }
+    }
+    if (from === '11') {
+      document.getElementById('p11Video').pause();
+      if (p11DanmakuInterval) { clearInterval(p11DanmakuInterval); p11DanmakuInterval = null; }
+      if (p11ProgressInterval) { clearInterval(p11ProgressInterval); p11ProgressInterval = null; }
+    }
+    if (from === '15') {
+      document.getElementById('p15Video').pause();
+      shenghuaAudio.pause();
+      shenghuaAudio.currentTime = 0;
+    }
+
+    // 背景音乐管理
+    if (shouldBgmPlay(from) && !shouldBgmPlay(to)) pauseBgm();
+    if (!shouldBgmPlay(from) && shouldBgmPlay(to)) resumeBgm();
+
+    // 页面专属音乐：离开4/5/6/7时停止
+    if (['4','5','6','7'].includes(from)) stopPageMusic();
+
+    if (skipAnim) {
+      fromEl.classList.remove('active', 'page-leave', 'page-enter');
+      toEl.classList.remove('page-leave');
+      toEl.classList.add('active', 'page-enter');
+      currentPage = to;
+      onPageEnter(to);
+      return;
+    }
+
+    fromEl.classList.add('page-leave');
+    setTimeout(() => {
+      fromEl.classList.remove('active', 'page-leave');
+      toEl.classList.add('active', 'page-enter');
+      currentPage = to;
+      onPageEnter(to);
+    }, 400);
+  }
+
+  function onPageEnter(page) {
+    if (page === '1') { if (bgmFirstPlay && bgmEnabled) { bgmFirstPlay = false; startBgm(); } }
+    if (page === '2') setTimeout(startPage2Dialog, 600);
+    if (page === '3') setTimeout(startPage3, 300);
+    if (['4','5','6','7'].includes(page)) {
+      playPageMusic(page);
+      setTimeout(() => startStoryPage(page), 1500);
+    }
+    if (page === '4b') { resumeBgm(); initPage4b(); }
+    if (page === '5b') { pauseBgm(); initPage5b(); }
+    if (page === '6b') { resumeBgm(); initPage6b(); }
+    if (page === '8') { resumeBgm(); setTimeout(startPage8, 600); }
+    if (page === '9') startPage9();
+    if (page === '10') startPage10();
+    if (page === '11') { pauseBgm(); startPage11(); }
+    if (page === '12') { resumeBgm(); initPage12(); }
+    if (page === '13') { resumeBgm(); initPage13(); }
+    if (page === '14') { pauseBgm(); shenghuaAudio.play().catch(() => {}); initPage14(); }
+    if (page === '15') { initPage15(); }
+  }
+
+  // ===== 打字机 =====
+  function typeText(text, callback, textEl) {
+    isTyping = true;
+    const el = textEl || document.getElementById('dialogText');
+    el.innerHTML = '';
+    let i = 0;
+    const cursor = '<span class="typing-cursor"></span>';
+    function type() {
+      if (i < text.length) {
+        el.innerHTML = text.substring(0, i+1).replace(/\n/g, '<br>') + cursor;
+        i++;
+        setTimeout(type, 40);
+      } else {
+        el.innerHTML = text.replace(/\n/g, '<br>');
+        isTyping = false;
+        if (callback) callback();
+      }
+    }
+    type();
+  }
+
+  // ===== 页面1 =====
+  document.getElementById('page1').addEventListener('click', function() {
+    if (currentPage === '1') switchPage('1', '2');
+  });
+
+  // ===== 页面2：三段对话 =====
+  function startPage2Dialog() {
+    document.getElementById('dialogContainer').classList.add('visible');
+    setTimeout(() => {
+      dialogStep = 1;
+      typeText('你好呀，我是小熊，该怎么称呼你呢？', function() {
+        document.getElementById('inputArea').classList.add('visible');
+        document.getElementById('submitBtn').classList.add('visible');
+      });
+    }, 800);
+  }
+
+  document.getElementById('dialogText').addEventListener('click', function() {
+    if (isTyping) { isTyping = false; return; }
+    if (dialogStep === 2 && nickname) {
+      dialogStep = 3;
+      const textEl = this;
+      textEl.classList.add('fade-out');
+      setTimeout(() => {
+        textEl.innerHTML = '';
+        textEl.classList.remove('fade-out');
+        typeText('今天，我想做一张声音地图，把我听到的美好都记下来。可以邀请你和我一起完成吗？', function() {
+          document.getElementById('enterBtn').classList.add('visible');
+        });
+      }, 400);
+    }
+  });
+
+  document.getElementById('submitBtn').addEventListener('click', handleSubmit);
+
+  function handleSubmit() {
+    const input = document.getElementById('nicknameInput');
+    const value = input.value.trim();
+    if (!value) {
+      document.getElementById('nicknameWarning').classList.add('visible');
+      setTimeout(() => document.getElementById('nicknameWarning').classList.remove('visible'), 1800);
+      return;
+    }
+    nickname = value;
+    document.getElementById('submitBtn').classList.add('hidden');
+    const inputArea = document.getElementById('inputArea');
+    inputArea.classList.remove('visible');
+    inputArea.style.display = 'none';
+    const textEl = document.getElementById('dialogText');
+    textEl.classList.add('fade-out');
+    setTimeout(() => {
+      textEl.innerHTML = '';
+      textEl.classList.remove('fade-out');
+      dialogStep = 2;
+      typeText(nickname + '，很高兴认识你！我的世界，是用各种各样的声音拼凑起来的。');
+    }, 500);
+  }
+
+  document.getElementById('enterBtn').addEventListener('click', function() {
+    switchPage('2', '3');
+  });
+
+  // ===== 页面3：声音地图 =====
+  function startPage3() { updateSoundIcons(); }
+
+  function updateSoundIcons() {
+    document.querySelectorAll('.sound-icon').forEach((icon, idx) => {
+      if (matchedIcons.has(idx)) { icon.classList.add('matched'); icon.classList.remove('disabled','selected'); return; }
+      if (selectedIcon !== null && selectedIcon !== idx) { icon.classList.add('disabled'); icon.classList.remove('selected'); }
+      else if (selectedIcon === idx) { icon.classList.remove('disabled'); icon.classList.add('selected'); }
+      else { icon.classList.remove('disabled','selected','matched'); }
+    });
+  }
+
+  // ===== 拖拽交互 =====
+  document.querySelectorAll('.sound-icon').forEach(icon => {
+    icon.addEventListener('mousedown', onPointerDown);
+    icon.addEventListener('touchstart', onPointerDown, { passive: false });
+  });
+  document.addEventListener('mousemove', onPointerMove);
+  document.addEventListener('touchmove', onPointerMove, { passive: false });
+  document.addEventListener('mouseup', onPointerUp);
+  document.addEventListener('touchend', onPointerUp, { passive: false });
+
+  let dragState = { active:false, icon:null, idx:-1, startCX:0, startCY:0, hasMoved:false };
+
+  function getPointerPos(e) {
+    if (e.touches && e.touches.length>0) return {x:e.touches[0].clientX,y:e.touches[0].clientY};
+    if (e.changedTouches && e.changedTouches.length>0) return {x:e.changedTouches[0].clientX,y:e.changedTouches[0].clientY};
+    return {x:e.clientX,y:e.clientY};
+  }
+
+  function clientToDesign(cx, cy) {
+    const scale = getAppScale();
+    const rect = app.getBoundingClientRect();
+    return { x: (cx - rect.left) / scale, y: (cy - rect.top) / scale };
+  }
+
+  function onPointerDown(e) {
+    const icon = e.currentTarget;
+    const idx = parseInt(icon.dataset.index);
+    if (matchedIcons.has(idx)) return;
+    e.preventDefault();
+    const pos = getPointerPos(e);
+    if (selectedIcon === null || selectedIcon !== idx) {
+      selectedIcon = idx;
+      updateSoundIcons();
+      playCurrentAudio();
+    }
+    dragState = { active:true, icon:icon, idx:idx, startCX:pos.x, startCY:pos.y, hasMoved:false };
+  }
+
+  function onPointerMove(e) {
+    if (!dragState.active) return;
+    e.preventDefault();
+    const pos = getPointerPos(e);
+    if (!dragState.hasMoved) {
+      const dx = pos.x - dragState.startCX, dy = pos.y - dragState.startCY;
+      if (Math.sqrt(dx*dx + dy*dy) < 10) return;
+      dragState.hasMoved = true;
+      dragState.icon.classList.add('dragging');
+      dragState.icon.style.position = 'absolute';
+      dragState.icon.style.zIndex = '200';
+      dragState.icon.style.transition = 'none';
+    }
+    const dp = clientToDesign(pos.x, pos.y);
+    dragState.icon.style.left = (dp.x - 75) + 'px';
+    dragState.icon.style.top = (dp.y - 73) + 'px';
+    highlightDropZones(dp.x, dp.y);
+  }
+
+  function onPointerUp(e) {
+    if (!dragState.active) return;
+    const pos = getPointerPos(e);
+    document.querySelectorAll('.drop-zone').forEach(z => z.classList.remove('highlight'));
+    if (dragState.hasMoved) {
+      dragState.icon.classList.remove('dragging');
+      const dp = clientToDesign(pos.x, pos.y);
+      const target = getDropTarget(dp.x, dp.y);
+      if (target === pairSequence[currentPairIndex].building) {
+        handleMatchSuccess(dragState.idx, target);
+      } else {
+        resetIconPosition(dragState.icon);
+      }
+    }
+    dragState.active = false; dragState.hasMoved = false;
+  }
+
+  function playCurrentAudio() {
+    if (currentPairIndex >= pairSequence.length) return;
+    if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
+    currentAudio = new Audio(pairSequence[currentPairIndex].audio);
+    currentAudio.play().catch(() => {});
+  }
+
+  function highlightDropZones(dx, dy) {
+    document.querySelectorAll('.drop-zone').forEach(zone => {
+      if (zone.classList.contains('matched')) return;
+      const zl = parseInt(zone.style.left), zt = parseInt(zone.style.top);
+      const zw = parseInt(zone.style.width), zh = parseInt(zone.style.height);
+      zone.classList.toggle('highlight', dx>=zl && dx<=zl+zw && dy>=zt && dy<=zt+zh);
+    });
+  }
+
+  function getDropTarget(dx, dy) {
+    for (const zone of document.querySelectorAll('.drop-zone')) {
+      if (zone.classList.contains('matched')) continue;
+      const zl = parseInt(zone.style.left), zt = parseInt(zone.style.top);
+      const zw = parseInt(zone.style.width), zh = parseInt(zone.style.height);
+      if (dx>=zl && dx<=zl+zw && dy>=zt && dy<=zt+zh) return zone.dataset.building;
+    }
+    return null;
+  }
+
+  function handleMatchSuccess(iconIdx, building) {
+    correctSound.currentTime = 0; correctSound.play().catch(() => {});
+    matchedIcons.add(iconIdx); matchedBuildings.add(building);
+    const icon = document.querySelector('.sound-icon[data-index="'+iconIdx+'"]');
+    icon.style.position=''; icon.style.left=''; icon.style.top=''; icon.style.zIndex=''; icon.style.transition='';
+    icon.classList.add('matched');
+    document.getElementById('building-'+building).classList.add('matched');
+    document.getElementById('zone-'+building).classList.add('matched');
+    if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
+    selectedIcon = null;
+    const detailPage = pairSequence[currentPairIndex].detailPage;
+    currentPairIndex++;
+    setTimeout(() => switchPage('3', detailPage), 800);
+  }
+
+  function resetIconPosition(icon) {
+    icon.style.position = '';
+    icon.style.left = '';
+    icon.style.top = '';
+    icon.style.zIndex = '';
+    icon.style.transition = '';
+  }
+
+  // ===== 页面4-7：故事页 =====
+  function startStoryPage(page) {
+    document.getElementById('storyBox'+page).classList.add('visible');
+    typeText(storyContent[page], function() {
+      // 页面4/5/6显示继续按钮→跳转小游戏; 页面7显示进入琴房→跳转页面8
+      document.getElementById(page === '7' ? 'nextBtn7' : 'nextBtn'+page).classList.add('visible');
+    }, document.getElementById('storyText'+page));
+  }
+
+  // 页面4继续→4b
+  document.getElementById('nextBtn4').addEventListener('click', function() {
+    this.classList.remove('visible');
+    document.getElementById('storyBox4').classList.remove('visible');
+    document.getElementById('storyText4').innerHTML = '';
+    stopPageMusic();
+    switchPage('4', '4b');
+  });
+  // 页面5继续→5b
+  document.getElementById('nextBtn5').addEventListener('click', function() {
+    this.classList.remove('visible');
+    document.getElementById('storyBox5').classList.remove('visible');
+    document.getElementById('storyText5').innerHTML = '';
+    stopPageMusic();
+    switchPage('5', '5b');
+  });
+  // 页面6继续→6b
+  document.getElementById('nextBtn6').addEventListener('click', function() {
+    this.classList.remove('visible');
+    document.getElementById('storyBox6').classList.remove('visible');
+    document.getElementById('storyText6').innerHTML = '';
+    stopPageMusic();
+    switchPage('6', '6b');
+  });
+  // 页面7进入琴房→8
+  document.getElementById('nextBtn7').addEventListener('click', function() {
+    this.classList.remove('visible');
+    stopPageMusic();
+    switchPage('7', '8');
+  });
+
+  // ===== 页面4b：盲文识别游戏 =====
+  function initPage4b() {}
+
+  document.getElementById('p4bPipes').addEventListener('click', function() {
+    wrongSound.currentTime = 0; wrongSound.play().catch(() => {});
+  });
+  document.getElementById('p4bPitch').addEventListener('click', function() {
+    wrongSound.currentTime = 0; wrongSound.play().catch(() => {});
+  });
+  document.getElementById('p4bPiano').addEventListener('click', function() {
+    correctSound.currentTime = 0; correctSound.play().catch(() => {});
+    const result = document.getElementById('p4bResult');
+    result.classList.add('visible');
+    setTimeout(() => {
+      result.classList.remove('visible');
+      switchPage('4b', '3', true);
+    }, 1500);
+  });
+
+  // ===== 页面5b：琴键游戏 =====
+  let p5bGameStarted = false;
+  let p5bInputSequence = [];
+  const p5bCorrectSeq = [1, 2, 3, 1, 5];
+  const p5bKeyAudios = {};
+  for (let k = 1; k <= 7; k++) {
+    p5bKeyAudios[k] = new Audio('小熊声音素材/' + k + '.mp3');
+  }
+  const p5bListenAudio = new Audio('小熊声音素材/识别琴键.mp3');
+
+  function initPage5b() {
+    p5bGameStarted = false;
+    p5bInputSequence = [];
+    document.getElementById('p5bStartBtn').style.display = '';
+    document.getElementById('p5bRetryBtn').classList.remove('visible');
+    document.getElementById('p5bResultImg').classList.remove('visible');
+    document.getElementById('p5bErrorImg').classList.remove('visible');
+  }
+
+  // 播放按钮：每次点击播放识别琴键.mp3
+  document.getElementById('p5bPlayBtn').addEventListener('click', function() {
+    p5bListenAudio.currentTime = 0;
+    p5bListenAudio.play().catch(() => {});
+  });
+
+  // 7个琴键区域：点击播放对应音频
+  document.querySelectorAll('.p5b-key-zone').forEach(zone => {
+    zone.addEventListener('click', function() {
+      const key = parseInt(this.dataset.key);
+      p5bKeyAudios[key].currentTime = 0;
+      p5bKeyAudios[key].play().catch(() => {});
+      if (p5bGameStarted) {
+        p5bInputSequence.push(key);
+        checkP5bSequence();
+      }
+    });
+  });
+
+  // 开始按钮
+  document.getElementById('p5bStartBtn').addEventListener('click', function() {
+    this.style.display = 'none';
+    p5bGameStarted = true;
+    p5bInputSequence = [];
+  });
+
+  // 再试一次按钮
+  document.getElementById('p5bRetryBtn').addEventListener('click', function() {
+    this.classList.remove('visible');
+    p5bGameStarted = true;
+    p5bInputSequence = [];
+  });
+
+  function checkP5bSequence() {
+    const pos = p5bInputSequence.length - 1;
+    if (p5bInputSequence[pos] !== p5bCorrectSeq[pos]) {
+      // 错误
+      p5bGameStarted = false;
+      p5bInputSequence = [];
+      document.getElementById('p5bErrorImg').classList.add('visible');
+      setTimeout(() => {
+        document.getElementById('p5bErrorImg').classList.remove('visible');
+        document.getElementById('p5bRetryBtn').classList.add('visible');
+      }, 1000);
+    } else if (p5bInputSequence.length === p5bCorrectSeq.length) {
+      // 正确完成
+      p5bGameStarted = false;
+      correctSound.currentTime = 0; correctSound.play().catch(() => {});
+      document.getElementById('p5bResultImg').classList.add('visible');
+      setTimeout(() => {
+        document.getElementById('p5bResultImg').classList.remove('visible');
+        switchPage('5b', '3', true);
+      }, 1000);
+    }
+  }
+
+  // ===== 页面6b：自行车整理游戏 =====
+  let p6bBadBikeRemoved = false;
+  let p6bGarbageRemoved = false;
+
+  function initPage6b() {
+    p6bBadBikeRemoved = false;
+    p6bGarbageRemoved = false;
+    // 重置所有元素状态
+    document.getElementById('p6bMessy').classList.remove('hidden');
+    document.getElementById('p6bBadBike').classList.remove('hidden');
+    document.getElementById('p6bGoodBike').classList.remove('visible');
+    document.getElementById('p6bGarbage').classList.remove('hidden');
+    document.getElementById('p6bTidy').classList.remove('visible');
+  }
+
+  // 点击乱停自行车→消失，整齐自行车出现
+  document.getElementById('p6bBadBike').addEventListener('click', function() {
+    this.classList.add('hidden');
+    document.getElementById('p6bGoodBike').classList.add('visible');
+    p6bBadBikeRemoved = true;
+    checkP6bComplete();
+  });
+
+  // 点击垃圾→消失
+  document.getElementById('p6bGarbage').addEventListener('click', function() {
+    this.classList.add('hidden');
+    p6bGarbageRemoved = true;
+    checkP6bComplete();
+  });
+
+  function checkP6bComplete() {
+    if (p6bBadBikeRemoved && p6bGarbageRemoved) {
+      // 有杂物消失，整洁渐显
+      document.getElementById('p6bMessy').classList.add('hidden');
+      document.getElementById('p6bTidy').classList.add('visible');
+      correctSound.currentTime = 0; correctSound.play().catch(() => {});
+      setTimeout(() => {
+        switchPage('6b', '3', true);
+      }, 2000);
+    }
+  }
+
+  // ===== 页面8 =====
+  function startPage8() {
+    document.getElementById('p8DialogContainer').classList.add('visible');
+    setTimeout(() => {
+      typeText('刚好来到琴房了，'+nickname+'，你可以帮我拍一段视频吗？我想发在我的账号上。', function() {
+        document.getElementById('p8NextBtn').classList.add('visible');
+      }, document.getElementById('p8DialogText'));
+    }, 800);
+  }
+
+  document.getElementById('p8NextBtn').addEventListener('click', function() {
+    this.classList.remove('visible');
+    pauseBgm();
+    switchPage('8', '9');
+  });
+
+  // ===== 页面9 =====
+  let p9Recording = false;
+  let p9Timer = null;
+
+  function startPage9() {
+    const video = document.getElementById('p9Video');
+    video.pause(); video.currentTime = 0;
+    video.classList.remove('blurred');
+    document.getElementById('p9NextBtn').classList.remove('visible');
+    document.getElementById('p9RecordBtn').style.display = '';
+    document.getElementById('p9HintText').classList.remove('hidden');
+    p9Recording = false;
+  }
+
+  document.getElementById('p9RecordBtn').addEventListener('click', function() {
+    if (p9Recording) return;
+    p9Recording = true;
+    document.getElementById('p9HintText').classList.add('hidden');
+    const video = document.getElementById('p9Video');
+    video.muted = false;
+    video.play().catch(() => {});
+    p9Timer = setTimeout(() => {
+      video.classList.add('blurred');
+      document.getElementById('p9RecordBtn').style.display = 'none';
+      document.getElementById('p9NextBtn').classList.add('visible');
+    }, 10000);
+  });
+
+  document.getElementById('p9NextBtn').addEventListener('click', function() {
+    if (p9Timer) { clearTimeout(p9Timer); p9Timer = null; }
+    document.getElementById('p9Video').pause();
+    this.classList.remove('visible');
+    switchPage('9', '10');
+  });
+
+  // ===== 页面10 =====
+  let selectedCaption = '';
+
+  function startPage10() {
+    selectedCaption = '';
+    document.querySelectorAll('.p10-option').forEach(opt => opt.classList.remove('selected'));
+    document.querySelector('.p10-custom-input').value = '';
+  }
+
+  document.querySelectorAll('.p10-option').forEach(opt => {
+    opt.addEventListener('click', function() {
+      document.querySelectorAll('.p10-option').forEach(o => o.classList.remove('selected'));
+      this.classList.add('selected');
+      if (this.classList.contains('p10-custom-option')) {
+        this.querySelector('.p10-custom-input').focus();
+        selectedCaption = this.querySelector('.p10-custom-input').value.trim();
+      } else {
+        selectedCaption = this.dataset.caption;
+      }
+    });
+  });
+
+  document.querySelector('.p10-custom-input').addEventListener('input', function() {
+    if (this.closest('.p10-custom-option').classList.contains('selected')) {
+      selectedCaption = this.value.trim();
+    }
+  });
+
+  document.getElementById('p10PublishBtn').addEventListener('click', function() {
+    if (document.querySelector('.p10-custom-option').classList.contains('selected') && !selectedCaption) return;
+    if (!selectedCaption) return;
+    switchPage('10', '11');
+  });
+
+  // ===== 页面11 =====
+  let p11DanmakuInterval = null;
+  let p11ProgressInterval = null;
+  let p11VideoEnded = false;
+
+  function startPage11() {
+    const video = document.getElementById('p11Video');
+    video.currentTime = 0;
+    video.muted = false;
+    video.loop = false;
+    p11VideoEnded = false;
+    document.getElementById('p11ContinueBtn').classList.remove('visible');
+    video.play().catch(() => {});
+
+    document.getElementById('p11Caption').textContent = selectedCaption;
+
+    const successImg = document.getElementById('p11SuccessImg');
+    successImg.classList.add('visible');
+    setTimeout(() => successImg.classList.remove('visible'), 1500);
+
+    video.onended = function() {
+      if (p11VideoEnded) return;
+      p11VideoEnded = true;
+      document.getElementById('p11ContinueBtn').classList.add('visible');
+      video.loop = true;
+      video.play().catch(() => {});
+    };
+
+    startProgress();
+    startDanmaku();
+  }
+
+  function startProgress() {
+    const video = document.getElementById('p11Video');
+    const fill = document.getElementById('p11ProgressFill');
+    p11ProgressInterval = setInterval(() => {
+      if (video.duration && video.currentTime) {
+        fill.style.width = (video.currentTime / video.duration * 100) + '%';
+      }
+    }, 300);
+  }
+
+  function startDanmaku() {
+    const container = document.getElementById('p11DanmakuContainer');
+    container.innerHTML = '';
+    const comments = [
+      '姐姐唱的很棒呢姐姐加油！', '好听好听', '太厉害了', '加油！',
+      '加油！相信你会越来越好', '好干净空灵的声音呀', '好歌喉',
+      '加油，唱得好好听', '太厉害了', '真美丽 真可爱 真好听',
+      '你的翻唱真的很好听！', '简直是天籁之音', '这手钢琴弹得太溜了', '钢琴练了多少年？'
+    ];
+    let idx = 0;
+    function create() {
+      const el = document.createElement('div');
+      el.className = 'p11-danmaku';
+      el.textContent = comments[idx % comments.length]; idx++;
+      el.style.top = (10 + Math.random() * 320) + 'px';
+      el.style.animationDuration = (6 + Math.random() * 4) + 's';
+      container.appendChild(el);
+      el.addEventListener('animationend', () => el.remove());
+    }
+    create(); setTimeout(create, 500);
+    p11DanmakuInterval = setInterval(create, 1500 + Math.random() * 1000);
+  }
+
+  document.getElementById('p11ContinueBtn').addEventListener('click', function() {
+    this.classList.remove('visible');
+    switchPage('11', '12');
+  });
+
+  // ===== 页面12：卡片轮播 =====
+  const cardData = [
+    { face: '小熊素材/10音乐生.jpg',     label: '小熊素材/12音乐生.png',     labelW: 288, labelH: 149 },
+    { face: '小熊素材/10乐队主唱.jpg',   label: '小熊素材/12乐队主唱.png',   labelW: 289, labelH: 148 },
+    { face: '小熊素材/10自媒体博主.jpg', label: '小熊素材/12自媒体.png',     labelW: 289, labelH: 147 },
+    { face: '小熊素材/10志愿服务.jpg',   label: '小熊素材/12志愿者.png',     labelW: 302, labelH: 147 }
+  ];
+
+  let currentCardIdx = 0;
+  let cardFlipped = false;
+  let p12StartX = 0;
+  let p12Swiping = false;
+  let p12Inited = false;
+  let p12NextTimer = null;
+
+  function initPage12() {
+    const carousel = document.getElementById('cardCarousel');
+
+    if (!p12Inited) {
+      p12Inited = true;
+      cardData.forEach((card, i) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'card-wrapper';
+        wrapper.dataset.index = i;
+        wrapper.innerHTML =
+          '<div class="card-inner">' +
+            '<div class="card-face card-front"><img src="小熊素材/12卡背.jpg" alt="卡背"></div>' +
+            '<div class="card-face card-back"><img src="' + card.face + '" alt="卡面"></div>' +
+          '</div>' +
+          '<div class="card-png-label" id="cardLabel' + i + '">' +
+            '<img src="' + card.label + '" alt="标签" style="width:' + card.labelW + 'px;height:' + card.labelH + 'px;">' +
+          '</div>';
+        carousel.appendChild(wrapper);
+
+        wrapper.addEventListener('click', function() {
+          var idx = parseInt(this.dataset.index);
+          if (getCardOffset(idx) === 0) {
+            if (!cardFlipped) flipCard(idx);
+            else if (this.classList.contains('flipped')) unflipCard(idx);
+          }
+        });
+      });
+
+      carousel.addEventListener('touchstart', function(e) {
+        if (cardFlipped) return;
+        p12StartX = e.touches[0].clientX;
+        p12Swiping = true;
+      }, { passive: true });
+      carousel.addEventListener('touchend', function(e) {
+        if (!p12Swiping || cardFlipped) return;
+        p12Swiping = false;
+        var dx = e.changedTouches[0].clientX - p12StartX;
+        if (Math.abs(dx) > 50) {
+          if (dx < 0) currentCardIdx = (currentCardIdx + 1) % 4;
+          else currentCardIdx = (currentCardIdx - 1 + 4) % 4;
+          renderCards();
+        }
+      }, { passive: true });
+
+      carousel.addEventListener('mousedown', function(e) {
+        if (cardFlipped) return;
+        p12StartX = e.clientX; p12Swiping = true; e.preventDefault();
+      });
+      document.addEventListener('mouseup', function(e) {
+        if (!p12Swiping || cardFlipped) { p12Swiping = false; return; }
+        p12Swiping = false;
+        var dx = e.clientX - p12StartX;
+        if (Math.abs(dx) > 50) {
+          if (dx < 0) currentCardIdx = (currentCardIdx + 1) % 4;
+          else currentCardIdx = (currentCardIdx - 1 + 4) % 4;
+          renderCards();
+        }
+      });
+    }
+
+    currentCardIdx = 0;
+    cardFlipped = false;
+    document.querySelectorAll('.card-wrapper').forEach(w => w.classList.remove('flipped'));
+    document.querySelectorAll('.card-png-label').forEach(l => l.classList.remove('visible'));
+    document.getElementById('p12NextBtn').classList.remove('visible');
+    if (p12NextTimer) clearTimeout(p12NextTimer);
+    p12NextTimer = setTimeout(function() {
+      document.getElementById('p12NextBtn').classList.add('visible');
+    }, 5000);
+    renderCards();
+  }
+
+  function getCardOffset(index) {
+    var diff = (index - currentCardIdx + 4) % 4;
+    if (diff === 0) return 0;
+    if (diff === 1) return 1;
+    if (diff === 2) return 2;
+    return -1;
+  }
+
+  function renderCards() {
+    document.querySelectorAll('.card-wrapper').forEach(function(w, i) {
+      var offset = getCardOffset(i);
+      var tx = 0, scale = 1, opacity = 1, zi = 1;
+      switch (offset) {
+        case 0:  tx = 0; scale = 1; opacity = 1; zi = 10; w.style.pointerEvents = 'auto'; break;
+        case 1:  tx = 300; scale = 0.82; opacity = 0.6; zi = 5; w.style.pointerEvents = 'none'; break;
+        case -1: tx = -300; scale = 0.82; opacity = 0.6; zi = 5; w.style.pointerEvents = 'none'; break;
+        case 2:  tx = 0; scale = 0.6; opacity = 0; zi = 0; w.style.pointerEvents = 'none'; break;
+      }
+      w.style.transform = 'translateX(' + tx + 'px) scale(' + scale + ')';
+      w.style.opacity = opacity;
+      w.style.zIndex = zi;
+    });
+  }
+
+  function flipCard(index) {
+    cardFlipped = true;
+    var wrapper = document.querySelector('.card-wrapper[data-index="' + index + '"]');
+    wrapper.classList.add('flipped');
+    setTimeout(function() {
+      document.getElementById('cardLabel' + index).classList.add('visible');
+    }, 700);
+  }
+
+  function unflipCard(index) {
+    cardFlipped = false;
+    var wrapper = document.querySelector('.card-wrapper[data-index="' + index + '"]');
+    document.getElementById('cardLabel' + index).classList.remove('visible');
+    setTimeout(function() {
+      wrapper.classList.remove('flipped');
+    }, 200);
+  }
+
+  // 页面12：下一页按钮
+  document.getElementById('p12NextBtn').addEventListener('click', function() {
+    if (p12NextTimer) { clearTimeout(p12NextTimer); p12NextTimer = null; }
+    this.classList.remove('visible');
+    switchPage('12', '13');
+  });
+
+  // ===== 页面13 =====
+  let p13Phase = 'dialog'; // dialog → gallery
+
+  function initPage13() {
+    p13Phase = 'dialog';
+    document.getElementById('p13Dialog').classList.remove('visible', 'hidden');
+    document.getElementById('p13DialogText').innerHTML = '';
+    document.getElementById('p13ViewBtn').classList.remove('visible', 'hidden');
+    document.getElementById('p13Character').classList.remove('hidden');
+    document.getElementById('p13Gallery').classList.remove('visible');
+    document.getElementById('p13ListenBtn').classList.remove('visible');
+    document.getElementById('p13GalleryHint').classList.remove('visible');    // 对话框渐显
+    setTimeout(function() {
+      document.getElementById('p13Dialog').classList.add('visible');
+      setTimeout(function() {
+        typeText(nickname + '，谢谢你陪我度过这一天，与我一起协作完成了所有作品。', function() {
+          document.getElementById('p13ViewBtn').classList.add('visible');
+        }, document.getElementById('p13DialogText'));
+      }, 500);
+    }, 800);
+  }
+
+  // 点击查看成果→进入画廊模式
+  document.getElementById('p13ViewBtn').addEventListener('click', function() {
+    if (p13Phase !== 'dialog') return;
+    p13Phase = 'gallery';
+    this.classList.add('hidden');
+    // 所有对话相关元素渐隐
+    document.getElementById('p13Character').classList.add('hidden');
+    document.getElementById('p13Dialog').classList.add('hidden');
+    document.getElementById('p13ViewBtn').classList.add('hidden');
+
+    // 画廊和听心声按钮渐显
+    setTimeout(function() {
+      document.getElementById('p13Gallery').classList.add('visible');
+      document.getElementById('p13ListenBtn').classList.add('visible');
+      document.getElementById('p13GalleryHint').classList.add('visible');
+    }, 800);
+  });
+
+  // 画廊点击放大/缩小（统一尺寸259×460 → 337×600）
+  document.getElementById('p13MapItem').addEventListener('click', function() {
+    if (this.classList.contains('zoomed')) {
+      this.classList.remove('zoomed');
+    } else {
+      document.querySelectorAll('.p13-gallery-item.zoomed').forEach(i => i.classList.remove('zoomed'));
+      this.classList.add('zoomed');
+    }
+  });
+  document.getElementById('p13ShowItem').addEventListener('click', function() {
+    if (this.classList.contains('zoomed')) {
+      this.classList.remove('zoomed');
+    } else {
+      document.querySelectorAll('.p13-gallery-item.zoomed').forEach(i => i.classList.remove('zoomed'));
+      this.classList.add('zoomed');
+    }
+  });
+
+  // 点击听心声→跳转页面14
+  document.getElementById('p13ListenBtn').addEventListener('click', function() {
+    shenghuaAudio.play().catch(() => {});
+    switchPage('13', '14');
+  });
+
+  // ===== 页面14 =====
+  const p14DialogLines = [
+    '我不需要过度的同情怜悯，\n也不需要过度的拔高赞美。',
+    '看不见不代表我感受不到这个世界，\n琴声、风声、善意，都能充盈我的生活。',
+    '世界有看得见的风景，\n也有依靠听觉、触觉感知的天地。',
+    '残障只是不同的生命状态，\n不是定义人的标签。',
+    '愿我们都能抛开固有标签，\n看见每一个完整、鲜活的普通人。',
+    '谢谢你，走进我有声有热爱的世界。'
+  ];
+  let p14LineIndex = 0;
+
+  function initPage14() {
+    p14LineIndex = 0;
+    document.getElementById('p14Dialog').classList.remove('visible');
+    document.getElementById('p14DialogText').innerHTML = '';
+    document.getElementById('p14EndBtn').classList.remove('visible');
+    // 对话框渐显
+    setTimeout(function() {
+      document.getElementById('p14Dialog').classList.add('visible');
+      setTimeout(function() {
+        typeText(p14DialogLines[0], function() {
+          p14LineIndex = 1;
+        }, document.getElementById('p14DialogText'));
+      }, 500);
+    }, 800);
+  }
+
+  // 点击对话框区域切换下一句
+  document.getElementById('p14DialogText').addEventListener('click', function() {
+    if (isTyping) { isTyping = false; return; }
+    if (p14LineIndex < p14DialogLines.length) {
+      this.innerHTML = '';
+      typeText(p14DialogLines[p14LineIndex], function() {
+        p14LineIndex++;
+        if (p14LineIndex >= p14DialogLines.length) {
+          // 所有对话完成 → 结束按钮渐显
+          document.getElementById('p14EndBtn').classList.add('visible');
+        }
+      }, this);
+    }
+  });
+
+  // 点击结束按钮→页面15
+  document.getElementById('p14EndBtn').addEventListener('click', function() {
+    switchPage('14', '15');
+  });
+
+  // ===== 页面15 =====
+  function initPage15() {
+    const video = document.getElementById('p15Video');
+    video.play().catch(() => {});
+  }
+
+  // ===== 启动 =====
+  onPageEnter('1');
+</script>
+</body>
+</html>
